@@ -80,9 +80,10 @@ class SocketServer(private val fm: FileManager, private val context: Context) {
         when (msg.optString("cmd")) {
 
             "HELLO" -> {
+                // One-way notification — Mac tells us its name, no response needed.
+                // Do NOT write anything back; the Mac never reads a reply here.
                 val macName = msg.optString("macName", "Mac")
                 onMacName?.invoke(macName)
-                Protocol.writeMessage(dos, JSONObject().put("type", "HELLO_ACK"))
             }
 
             "PING" -> Protocol.writeMessage(dos, JSONObject().put("type", "PONG"))
