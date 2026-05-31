@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Android build output
+AndroidApp/.gradle/
+AndroidApp/app/build/
+AndroidApp/local.properties
+
+# Mac Swift build
+MacApp/.build/
+MacApp/build/
+
+# Built app bundle (binary — not source)
+AndroidConnect.app/
+
+# Xcode / IDE
+*.xcodeproj/
+.idea/
+*.iml
