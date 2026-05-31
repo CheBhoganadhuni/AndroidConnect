@@ -3,7 +3,9 @@ package com.connect.androidconnect.service
 import android.util.Log
 import com.connect.androidconnect.network.Protocol
 import org.json.JSONObject
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
+import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.net.ServerSocket
 import java.net.Socket
@@ -24,6 +26,9 @@ class EventServer {
 
     @Volatile private var clientDos: DataOutputStream? = null
     private val dosLock = Any()
+
+    /** Called on a background thread when Mac sends a clipboard update. Dispatch to main if needed. */
+    var onClipboardFromMac: ((String) -> Unit)? = null
 
     fun start() {
         running.set(true)
@@ -76,10 +81,21 @@ class EventServer {
                 runCatching { clientDos?.close() }
                 clientDos = dos
             }
-            // Block here until client disconnects (we never read from the event channel)
-            val input = socket.getInputStream()
-            val buf = ByteArray(1)
-            while (running.get() && input.read(buf) >= 0) { /* idle */ }
+            // Read messages from Mac (clipboard sync arrives here)
+            Log.e(TAG, "Starting read loop for Mac clipboard messages")
+            val dis = DataInputStream(BufferedInputStream(socket.getInputStream(), Protocol.BUFFER_SIZE))
+            while (running.get()) {
+                val msg = runCatching { Protocol.readMessage(dis) }.getOrNull() ?: break
+                Log.e(TAG, "Received msg from Mac: type=${msg.optString("type")}")
+                when (msg.optString("type")) {
+                    "CLIPBOARD_SYNC" -> {
+                        val text = msg.optString("text")
+                        Log.e(TAG, "CLIPBOARD_SYNC received: ${text.take(80)}")
+                        if (text.isNotEmpty()) onClipboardFromMac?.invoke(text)
+                    }
+                }
+            }
+            Log.e(TAG, "Read loop ended")
         } catch (e: Exception) {
             Log.d(TAG, "Event client disconnected")
         } finally {

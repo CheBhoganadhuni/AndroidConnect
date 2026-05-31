@@ -4,16 +4,18 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
-import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import com.connect.androidconnect.network.FileManager
 import com.connect.androidconnect.network.Protocol
 import com.connect.androidconnect.network.SocketServer
+import org.json.JSONObject
 
 class ConnectService : Service() {
 
@@ -26,6 +28,10 @@ class ConnectService : Service() {
     private lateinit var nsdManager: NsdManager
     private var registrationListener: NsdManager.RegistrationListener? = null
 
+    private lateinit var clipboardManager: ClipboardManager
+    // Tracks the last text we received from Mac — prevents echoing it back
+    private var lastClipFromMac: String? = null
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -35,6 +41,8 @@ class ConnectService : Service() {
         fileWatcher = FileWatcher(fm) { evt -> eventServer.push(evt) }
         batteryMonitor = BatteryMonitor(this) { evt -> eventServer.push(evt) }
         nsdManager = getSystemService(Context.NSD_SERVICE) as NsdManager
+        clipboardManager = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        setupClipboardSync()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -81,7 +89,31 @@ class ConnectService : Service() {
         super.onDestroy()
     }
 
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    private fun setupClipboardSync() {
+        eventServer.onClipboardFromMac = { text ->
+            Log.e(TAG, "onClipboardFromMac: setting Android clipboard to: ${text.take(80)}")
+            mainHandler.post {
+                lastClipFromMac = text
+                clipboardManager.setPrimaryClip(ClipData.newPlainText("sync", text))
+                Log.e(TAG, "setPrimaryClip done")
+            }
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /** Called by ClipboardSyncService (AccessibilityService) to push a clipboard change to Mac. */
+    fun pushClipboardIfNew(text: String) {
+        Log.e(TAG, "pushClipboardIfNew: '${text.take(80)}' lastClipFromMac='$lastClipFromMac'")
+        if (text.isEmpty() || text == lastClipFromMac) {
+            Log.e(TAG, "pushClipboardIfNew: skipped (empty or same as lastClipFromMac)")
+            return
+        }
+        Log.e(TAG, "pushClipboardIfNew: pushing to EventServer")
+        eventServer.push(JSONObject().put("type", "CLIPBOARD").put("text", text))
+    }
 
     private fun registerMdns() {
         val info = NsdServiceInfo().apply {

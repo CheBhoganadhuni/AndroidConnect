@@ -27,20 +27,37 @@ object UpdateChecker {
     private const val API =
         "https://api.github.com/repos/CheBhoganadhuni/AndroidConnect/releases/latest"
 
-    fun checkOnce(context: Context) {
+    /** Silent auto-check on launch — only shows dialog when an update is found. */
+    fun checkOnce(context: Context) = check(context, silent = true)
+
+    /** Manual check triggered by tapping the version label — always shows result. */
+    fun checkManually(context: Context) = check(context, silent = false)
+
+    private fun check(context: Context, silent: Boolean) {
         Thread {
             try {
                 val conn = URL(API).openConnection() as HttpURLConnection
                 conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
                 conn.connectTimeout = 8_000
                 conn.readTimeout    = 8_000
-                if (conn.responseCode != 200) return@Thread
+                if (conn.responseCode != 200) {
+                    if (!silent) Handler(Looper.getMainLooper()).post {
+                        showInfo(context, "Update check failed", "Could not reach GitHub. Check your connection.")
+                    }
+                    return@Thread
+                }
 
                 val json    = JSONObject(conn.inputStream.bufferedReader().readText())
                 val tag     = json.optString("tag_name") ?: return@Thread
                 val version = if (tag.startsWith("v")) tag.drop(1) else tag
 
-                if (!isNewer(version, BuildConfig.VERSION_NAME)) return@Thread
+                if (!isNewer(version, BuildConfig.VERSION_NAME)) {
+                    if (!silent) Handler(Looper.getMainLooper()).post {
+                        showInfo(context, "You're up to date!",
+                            "Android Connect v${BuildConfig.VERSION_NAME} is the latest version.")
+                    }
+                    return@Thread
+                }
 
                 // Find first .apk asset
                 val assets = json.optJSONArray("assets") ?: return@Thread
@@ -52,7 +69,13 @@ object UpdateChecker {
                         break
                     }
                 }
-                apkUrl ?: return@Thread   // no APK asset in this release
+                if (apkUrl == null) {
+                    if (!silent) Handler(Looper.getMainLooper()).post {
+                        showInfo(context, "You're up to date!",
+                            "Android Connect v${BuildConfig.VERSION_NAME} is the latest Android version.")
+                    }
+                    return@Thread
+                }
 
                 val url = apkUrl
                 Handler(Looper.getMainLooper()).post {
@@ -60,8 +83,19 @@ object UpdateChecker {
                 }
             } catch (e: Exception) {
                 Log.d(TAG, "Update check failed: ${e.message}")
+                if (!silent) Handler(Looper.getMainLooper()).post {
+                    showInfo(context, "Update check failed", e.message ?: "Unknown error")
+                }
             }
         }.start()
+    }
+
+    private fun showInfo(context: Context, title: String, message: String) {
+        AlertDialog.Builder(context)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK", null)
+            .show()
     }
 
     private fun showUpdateDialog(context: Context, tag: String, apkUrl: String) {

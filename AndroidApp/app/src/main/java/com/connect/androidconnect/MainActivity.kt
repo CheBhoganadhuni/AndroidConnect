@@ -3,6 +3,7 @@ package com.connect.androidconnect
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
@@ -19,6 +20,8 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.connect.androidconnect.BuildConfig
+import com.connect.androidconnect.service.ClipboardSyncService
 import com.connect.androidconnect.service.ConnectService
 
 class MainActivity : AppCompatActivity() {
@@ -32,6 +35,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var storagePermBtn: Button
     private lateinit var notifPermCard: LinearLayout
     private lateinit var notifPermBtn: Button
+    private lateinit var clipboardPermCard: LinearLayout
+    private lateinit var clipboardPermBtn: Button
+    private lateinit var versionLabel: Button
 
     private var serviceRunning = false
 
@@ -84,10 +90,29 @@ class MainActivity : AppCompatActivity() {
         storagePermBtn       = findViewById(R.id.storagePermBtn)
         notifPermCard        = findViewById(R.id.notifPermCard)
         notifPermBtn         = findViewById(R.id.notifPermBtn)
+        clipboardPermCard    = findViewById(R.id.clipboardPermCard)
+        clipboardPermBtn     = findViewById(R.id.clipboardPermBtn)
+        versionLabel         = findViewById(R.id.versionLabel)
+
+        versionLabel.text = "Check for Updates · v${BuildConfig.VERSION_NAME}"
+        versionLabel.setOnClickListener { UpdateChecker.checkManually(this) }
 
         toggleBtn.setOnClickListener { toggleService() }
         storagePermBtn.setOnClickListener { requestStoragePermission() }
         notifPermBtn.setOnClickListener { openNotificationListenerSettings() }
+        clipboardPermBtn.setOnClickListener {
+            val expected = ComponentName(this, ClipboardSyncService::class.java).flattenToString()
+            val flat = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: ""
+            val a11yEnabled = flat.split(":").any { it.equals(expected, ignoreCase = true) }
+            if (!a11yEnabled) {
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            } else if (!Settings.canDrawOverlays(this)) {
+                startActivity(Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                ))
+            }
+        }
 
         val filter = IntentFilter().apply {
             addAction(ConnectService.ACTION_CONNECTED)
@@ -183,8 +208,9 @@ class MainActivity : AppCompatActivity() {
     // MARK: - Permission checks
 
     private fun refreshPermissionCards() {
-        storagePermCard.visibility = if (hasStoragePermission()) View.GONE else View.VISIBLE
-        notifPermCard.visibility   = if (isNotificationListenerEnabled()) View.GONE else View.VISIBLE
+        storagePermCard.visibility   = if (hasStoragePermission()) View.GONE else View.VISIBLE
+        notifPermCard.visibility     = if (isNotificationListenerEnabled()) View.GONE else View.VISIBLE
+        clipboardPermCard.visibility = if (isClipboardAccessibilityEnabled()) View.GONE else View.VISIBLE
     }
 
     private fun hasStoragePermission(): Boolean {
@@ -200,6 +226,14 @@ class MainActivity : AppCompatActivity() {
         val flat = Settings.Secure.getString(contentResolver, "enabled_notification_listeners")
             ?: return false
         return flat.split(":").any { it.contains(packageName) }
+    }
+
+    private fun isClipboardAccessibilityEnabled(): Boolean {
+        val expected = ComponentName(this, ClipboardSyncService::class.java).flattenToString()
+        val flat = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+            ?: return false
+        val a11yEnabled = flat.split(":").any { it.equals(expected, ignoreCase = true) }
+        return a11yEnabled && Settings.canDrawOverlays(this)
     }
 
     private fun requestStoragePermission() {

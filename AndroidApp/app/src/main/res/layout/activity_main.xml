@@ -183,6 +183,51 @@
                 android:backgroundTint="#F5A623" />
         </LinearLayout>
 
+        <!-- Clipboard accessibility card — hidden when granted -->
+        <LinearLayout
+            android:id="@+id/clipboardPermCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="#FFF3CD"
+            android:padding="16dp"
+            android:layout_marginBottom="10dp"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Clipboard sync is one-way"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="#7A4400" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Enable Accessibility to sync Android clipboard to Mac in background"
+                    android:textSize="12sp"
+                    android:textColor="#A06020"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/clipboardPermBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="Enable"
+                android:textSize="12sp"
+                android:paddingHorizontal="16dp"
+                android:backgroundTint="#F5A623" />
+        </LinearLayout>
+
         <!-- WiFi hint -->
         <TextView
             android:layout_width="wrap_content"
@@ -192,6 +237,27 @@
             android:textColor="#AAAAAA"
             android:gravity="center"
             android:layout_marginTop="16dp" />
+
+        <!-- Update button — tap to check for updates -->
+        <Button
+            android:id="@+id/versionLabel"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:textSize="15sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#111111"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Branding -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="♥ pericardium.7"
+            android:textSize="11sp"
+            android:textColor="#BBBBBB"
+            android:gravity="center"
+            android:layout_marginBottom="4dp" />
 
     </LinearLayout>
 </ScrollView>

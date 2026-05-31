@@ -430,7 +430,7 @@ final class MenuBarPopoverViewController: NSViewController {
         reconnectCircle.action = #selector(reconnect)
         reconnectCircle.toolTip = "Reconnect — drop existing connection and scan for device"
 
-        let title = NSTextField(labelWithString: "Android Connect")
+        let title = NSTextField(labelWithString: "Android Connect by Pericardium.7")
         title.font      = .systemFont(ofSize: 13, weight: .semibold)
         title.textColor = OPTheme.title
 

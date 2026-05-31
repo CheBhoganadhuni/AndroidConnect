@@ -7,10 +7,12 @@ protocol EventClientDelegate: AnyObject {
     func batteryUpdated(level: Int, charging: Bool)
     func fileCreatedOnPhone(_ file: RecentFile)
     func notificationReceived(_ notification: PhoneNotification)
+    func clipboardReceived(text: String)
     func eventClientDisconnected()
 }
 
 extension EventClientDelegate {
+    func clipboardReceived(text: String) { }
     func eventClientDisconnected() { }
 }
 
@@ -24,7 +26,8 @@ final class EventClient {
 
     private var fd: Int32 = -1
     private let fdLock = NSLock()
-    private let ioQueue = DispatchQueue(label: "com.androidconnect.events", qos: .utility)
+    private let ioQueue   = DispatchQueue(label: "com.androidconnect.events.read",  qos: .utility)
+    private let writeQueue = DispatchQueue(label: "com.androidconnect.events.write", qos: .utility)
 
     var isConnected: Bool {
         fdLock.lock(); defer { fdLock.unlock() }; return fd >= 0
@@ -45,6 +48,17 @@ final class EventClient {
         fdLock.lock()
         if fd >= 0 { Darwin.close(fd); fd = -1 }
         fdLock.unlock()
+    }
+
+    /// Send Android's clipboard to the phone. Safe to call from any thread.
+    func sendClipboard(_ text: String) {
+        writeQueue.async {
+            self.fdLock.lock()
+            let sock = self.fd
+            self.fdLock.unlock()
+            guard sock >= 0 else { return }
+            try? MessageProtocol.writeMessage(fd: sock, ["type": "CLIPBOARD_SYNC", "text": text])
+        }
     }
 
     // MARK: - Private
@@ -88,6 +102,10 @@ final class EventClient {
             let notif     = PhoneNotification(appLabel: appLabel, title: title,
                                               text: text, key: key, postTime: postTime)
             main { self.delegate?.notificationReceived(notif) }
+
+        case "CLIPBOARD":
+            let text = msg["text"] as? String ?? ""
+            if !text.isEmpty { main { self.delegate?.clipboardReceived(text: text) } }
 
         default: break
         }

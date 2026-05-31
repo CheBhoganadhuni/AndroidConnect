@@ -65,6 +65,11 @@ final class MenuBarController: NSObject {
     private var batteryCharging = false
     private var reconnecting = false  // set by reconnect() to suppress clientDisconnected timer
 
+    // Clipboard sync
+    private var pasteboardPoller: Timer?
+    private var lastPasteboardCount = -1
+    private var lastSentClipboard   = ""   // prevents re-sending what we just received from Android
+
     // Global drag monitors — detect file drags anywhere near the menu bar
     private var globalDragMonitor:    Any?
     private var globalMouseUpMonitor: Any?
@@ -196,6 +201,33 @@ final class MenuBarController: NSObject {
         for url in urls { client.uploadFile(url: url, toDir: "/sdcard/AndroidConnect") }
     }
 
+    // MARK: - Clipboard sync
+
+    private func startClipboardSync() {
+        lastPasteboardCount = NSPasteboard.general.changeCount
+        pasteboardPoller = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+            self?.checkPasteboard()
+        }
+    }
+
+    private func stopClipboardSync() {
+        pasteboardPoller?.invalidate()
+        pasteboardPoller = nil
+    }
+
+    private func checkPasteboard() {
+        let pb = NSPasteboard.general
+        let count = pb.changeCount
+        guard count != lastPasteboardCount else { return }
+        lastPasteboardCount = count
+        guard let text = pb.string(forType: .string), !text.isEmpty else { return }
+        guard text != lastSentClipboard else { return }
+        lastSentClipboard = text
+        NSLog("ClipSync [Mac→Android] sending: \(text.prefix(80))")
+        NSLog("ClipSync [Mac→Android] EventClient connected: \(events.isConnected)")
+        events.sendClipboard(text)
+    }
+
     // MARK: - Reconnect
 
     /// Drops the current connection (if any) and restarts mDNS discovery from scratch.
@@ -323,11 +355,13 @@ extension MenuBarController: SocketClientDelegate {
         client.requestStorageInfo()
         client.requestRecentFiles(limit: 5)
         client.requestFileCounts()
+        startClipboardSync()
     }
 
     func clientDisconnected() {
         connectedDevice = nil
         batteryLevel    = -1
+        stopClipboardSync()
         events.disconnect()
         if popover.isShown { refreshPopover() }
         if reconnecting {
@@ -406,6 +440,14 @@ extension MenuBarController: EventClientDelegate {
 
     func notificationReceived(_ notification: PhoneNotification) {
         postPhoneNotification(notification)
+    }
+
+    func clipboardReceived(text: String) {
+        lastSentClipboard   = text  // don't echo this back to Android
+        lastPasteboardCount = -1    // force poller to re-read changeCount after we write
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+        lastPasteboardCount = NSPasteboard.general.changeCount  // sync so poller skips it
     }
 
     func deviceNameReceived(name: String) {
