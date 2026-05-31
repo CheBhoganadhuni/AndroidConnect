@@ -98,7 +98,7 @@ enum MessageProtocol {
     static let port: Int32 = 58000
     static let eventPort: Int32 = 58001   // Android → Mac push channel
     static let serviceType = "_androidconnect._tcp."
-    static let bufferSize = 65536
+    static let bufferSize = 262144   // 256 KB — 4× fewer syscalls vs old 64 KB
 
     static func readMessage(fd: Int32) throws -> [String: Any] {
         let lenData = try readExactly(fd: fd, count: 4)

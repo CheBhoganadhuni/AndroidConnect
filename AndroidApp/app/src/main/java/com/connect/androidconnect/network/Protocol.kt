@@ -9,7 +9,7 @@ object Protocol {
     const val EVENT_PORT = 58001        // Android → Mac push channel
     const val SERVICE_TYPE = "_androidconnect._tcp."
     const val SERVICE_NAME = "AndroidConnect"
-    const val BUFFER_SIZE = 65536 // 64 KB chunks → saturates WiFi easily
+    const val BUFFER_SIZE = 262144 // 256 KB — fewer syscalls, better throughput on fast WiFi
 
     fun readMessage(dis: DataInputStream): JSONObject {
         val len = dis.readInt()

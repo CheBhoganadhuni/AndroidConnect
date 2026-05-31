@@ -50,6 +50,11 @@ final class SocketClient {
     private var thumbGeneration: Int = 0
     private let thumbGenLock = NSLock()
 
+    // Download-pending flag: set before enqueuing a download so _recentFiles bails immediately
+    // instead of blocking the serial ioQueue with a full TCP round-trip.
+    private var downloadPending = false
+    private let downloadPendingLock = NSLock()
+
     func cachedThumbnail(for path: String) -> NSImage? {
         thumbCache.object(forKey: path as NSString)
     }
@@ -84,12 +89,14 @@ final class SocketClient {
     }
 
     func downloadFile(path: String) {
-        bumpThumbGeneration()   // evict queued thumbnail requests so download runs immediately
+        bumpThumbGeneration()
+        downloadPendingLock.lock(); downloadPending = true; downloadPendingLock.unlock()
         ioQueue.async { self._download(path: path) }
     }
 
     func uploadFile(url: URL, toDir destPath: String) {
         bumpThumbGeneration()
+        downloadPendingLock.lock(); downloadPending = true; downloadPendingLock.unlock()
         ioQueue.async { self._upload(url: url, toDir: destPath) }
     }
 
@@ -208,6 +215,7 @@ final class SocketClient {
     }
 
     private func _download(path: String) {
+        downloadPendingLock.lock(); downloadPending = false; downloadPendingLock.unlock()
         let sock = currentFd(); guard sock >= 0 else { return }
         isTransferring = true
         defer { isTransferring = false }
@@ -224,27 +232,40 @@ final class SocketClient {
 
             let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
             let dest = downloads.appendingPathComponent(name)
-            Foundation.FileManager.default.createFile(atPath: dest.path, contents: nil)
-            guard let handle = FileHandle(forWritingAtPath: dest.path) else { return }
+            // Direct Darwin.write to a raw fd — fastest possible, no ObjC/NSData overhead.
+            let filefd = Darwin.open(dest.path, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
+            guard filefd >= 0 else { return }
 
             var received: Int64 = 0
+            var lastProgressReport: Int64 = 0
+            let progressStride: Int64 = 1_048_576  // report UI every 1 MB
             let buf = UnsafeMutablePointer<UInt8>.allocate(capacity: MessageProtocol.bufferSize)
-            defer { buf.deallocate(); handle.closeFile() }
+            defer { buf.deallocate(); Darwin.close(filefd) }
 
             while received < size {
                 let n = Darwin.read(sock, buf, min(MessageProtocol.bufferSize, Int(size - received)))
                 guard n > 0 else { throw ConnectError.disconnected }
-                handle.write(Data(bytes: buf, count: n))
+                var off = 0
+                while off < n {
+                    let w = Darwin.write(filefd, buf.advanced(by: off), n - off)
+                    guard w > 0 else { throw ConnectError.disconnected }
+                    off += w
+                }
                 received += Int64(n)
-                let snap = received
-                mainCallback { $0.transferProgress(sent: snap, total: size, isUpload: false) }
+                if received - lastProgressReport >= progressStride {
+                    lastProgressReport = received
+                    let snap = received
+                    mainCallback { $0.transferProgress(sent: snap, total: size, isUpload: false) }
+                }
             }
 
+            mainCallback { $0.transferProgress(sent: size, total: size, isUpload: false) }
             mainCallback { $0.transferComplete(isUpload: false, url: dest) }
         } catch { handleError(error) }
     }
 
     private func _upload(url: URL, toDir destPath: String) {
+        downloadPendingLock.lock(); downloadPending = false; downloadPendingLock.unlock()
         let sock = currentFd(); guard sock >= 0 else { return }
         isTransferring = true
         defer { isTransferring = false }
@@ -264,6 +285,8 @@ final class SocketClient {
 
             fileStream.open(); defer { fileStream.close() }
             var sent: Int64 = 0
+            var lastProgressReport: Int64 = 0
+            let progressStride: Int64 = 1_048_576  // report UI every 1 MB
             let buf = UnsafeMutablePointer<UInt8>.allocate(capacity: MessageProtocol.bufferSize)
             defer { buf.deallocate() }
 
@@ -277,9 +300,13 @@ final class SocketClient {
                     off += w
                 }
                 sent += Int64(n)
-                let snap = sent
-                mainCallback { $0.transferProgress(sent: snap, total: fileSize, isUpload: true) }
+                if sent - lastProgressReport >= progressStride {
+                    lastProgressReport = sent
+                    let snap = sent
+                    mainCallback { $0.transferProgress(sent: snap, total: fileSize, isUpload: true) }
+                }
             }
+            mainCallback { $0.transferProgress(sent: fileSize, total: fileSize, isUpload: true) }
             let done = try MessageProtocol.readMessage(fd: sock)
             guard done["type"] as? String == "PUT_DONE" else { return }
             mainCallback { $0.transferComplete(isUpload: true, url: nil) }
@@ -287,6 +314,9 @@ final class SocketClient {
     }
 
     private func _recentFiles(limit: Int) {
+        // Bail instantly if a download/upload is already queued — don't block it with a round-trip.
+        downloadPendingLock.lock(); let skip = downloadPending; downloadPendingLock.unlock()
+        guard !skip else { return }
         let sock = currentFd(); guard sock >= 0 else { return }
         do {
             try MessageProtocol.writeMessage(fd: sock, ["cmd": "GET_RECENT_FILES", "limit": limit])

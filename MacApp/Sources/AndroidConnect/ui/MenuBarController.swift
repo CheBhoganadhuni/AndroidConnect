@@ -155,7 +155,6 @@ final class MenuBarController: NSObject {
             // before refreshPopover() calls update() on them.
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
             refreshPopover()
-            if client.isConnected { client.requestRecentFiles(limit: 5) }
         }
     }
 
@@ -398,11 +397,10 @@ extension MenuBarController: EventClientDelegate {
         guard let device = connectedDevice else { return }
         // Replace generic "Android" name with the real device name
         connectedDevice = AndroidDevice(name: name, host: device.host, port: device.port)
+        // Only refresh if popover is open — viewDidLoad hasn't run until first show,
+        // so calling update() before that crashes on uninitialised views.
+        // If popover is closed, refreshPopover() will be called when user opens it.
         if popover.isShown { refreshPopover() }
-        // Update async in case popover opens later
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            self?.refreshPopover()
-        }
     }
 }
 
