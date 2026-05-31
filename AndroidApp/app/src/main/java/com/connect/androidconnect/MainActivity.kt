@@ -127,9 +127,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         requestPostNotificationsIfNeeded()
-
-        // Auto-start the service on first open — user shouldn't have to press anything
-        autoStartService()
     }
 
     override fun onResume() {
@@ -160,18 +157,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     // MARK: - Service lifecycle
-
-    private fun autoStartService() {
-        if (!serviceRunning) {
-            startForegroundService(Intent(this, ConnectService::class.java))
-            serviceRunning = true
-            toggleBtn.text  = "Stop Service"
-            statusText.text = "Waiting for Mac…"
-            statusDot.setBackgroundColor(Color.parseColor("#F5A623"))
-            statusHandler.removeCallbacks(statusPoll)
-            statusHandler.postDelayed(statusPoll, 500)
-        }
-    }
 
     private fun toggleService() {
         if (serviceRunning) {
@@ -208,9 +193,31 @@ class MainActivity : AppCompatActivity() {
     // MARK: - Permission checks
 
     private fun refreshPermissionCards() {
-        storagePermCard.visibility   = if (hasStoragePermission()) View.GONE else View.VISIBLE
-        notifPermCard.visibility     = if (isNotificationListenerEnabled()) View.GONE else View.VISIBLE
-        clipboardPermCard.visibility = if (isClipboardAccessibilityEnabled()) View.GONE else View.VISIBLE
+        val storageGranted = hasStoragePermission()
+        val notifGranted = isNotificationListenerEnabled()
+        val clipboardGranted = isClipboardAccessibilityEnabled()
+
+        storagePermCard.visibility   = if (storageGranted) View.GONE else View.VISIBLE
+        notifPermCard.visibility     = if (notifGranted) View.GONE else View.VISIBLE
+        clipboardPermCard.visibility = if (clipboardGranted) View.GONE else View.VISIBLE
+
+        val allGranted = storageGranted && notifGranted && clipboardGranted
+        if (allGranted) {
+            toggleBtn.visibility = View.VISIBLE
+        } else {
+            toggleBtn.visibility = View.GONE
+            
+            // Force stop service immediately if running with revoked permissions
+            if (serviceRunning) {
+                stopService(Intent(this, ConnectService::class.java))
+                serviceRunning = false
+                statusHandler.removeCallbacks(statusPoll)
+                toggleBtn.text = "Start Service"
+                statusText.text = "Service stopped"
+                deviceIpText.text = ""
+                statusDot.setBackgroundColor(Color.parseColor("#CCCCCC"))
+            }
+        }
     }
 
     private fun hasStoragePermission(): Boolean {
