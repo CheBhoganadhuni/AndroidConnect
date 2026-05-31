@@ -4,6 +4,47 @@ A Mac menu-bar app paired with an Android companion app that turns your phone in
 
 ---
 
+## 🚀 Quick Start & Installation Guide
+
+Get up and running with **Android Connect** in just a few steps. Follow these guides to install both applications and bypass standard OS restrictions for sideloaded apps.
+
+### 📱 1. Android App Setup (APK)
+
+1. **Download the Companion APK**: Pick the latest release. (At this moment its `AndroidConnect-v1.7.7.apk`.)
+2. **Bypass Google Play Protect Block**:
+   * If Google Play Protect displays an "App blocked" or "Unrecognized app" dialog:
+     * Tap **"Install Anyway"** if available.
+     * Alternatively, open the **Google Play Store** app, tap your profile icon at the top right, select **Play Protect**, tap the **Settings gear** icon at the top right, and temporarily turn **OFF** *"Scan apps with Play Protect"* during installation.
+3. **Resolve "Restricted Settings" (Android 13+)**:
+   * Modern Android systems grey out Accessibility permissions for apps installed outside the Play Store, displaying the alert: **"Restricted setting - For your security, this setting is currently unavailable."**
+   * **To Allow it**:
+     1. Open your phone's **Settings** app.
+     2. Navigate to **Apps** or **App Management** and tap on **Android Connect** to open its App Info page.
+     3. Tap the **Three-Dot Menu** (`⋮`) in the top-right corner.
+     4. Select **"Allow restricted settings"** and verify with your phone's PIN/fingerprint.
+4. **Complete Onboarding Permissions**:
+   * Open the **Android Connect** app. You will see a couple of orange card alerts indicating missing permissions.
+   * Tap on each card sequentially to grant **Storage access**, **Notification Mirroring access**, and **Display over other apps** (Draw overlay) permissions.
+   * Once all permissions are successfully granted, the orange alerts will disappear, and the big **"Start Service"** button will dynamically appear!
+
+---
+
+### 💻 2. macOS App Setup (.app)
+
+1. **Download the Mac Bundle**: Download the latest zip release. (At this moment its `AndroidConnect-v1.7.7.zip`.)and unzip it to extract `AndroidConnect.app`.
+2. **Bypass "Unidentified Developer" Security Block**:
+   * Since this app is an open-source tool and is ad-hoc signed rather than signed via a paid Apple Developer subscription, macOS Gatekeeper will block double-clicking it on first launch, saying **"AndroidConnect cannot be opened because the developer cannot be verified"**.
+   * **To Bypass it**:
+     1. Try to open the app once (double-click it), then click **Cancel** or **OK** on the warning popup.
+     2. Open macOS **System Settings** -> **Privacy & Security**.
+     3. Scroll down to the **Security** section.
+     4. You will see a notification saying: *"AndroidConnect was blocked from use because it is not from an identified developer."*
+     5. Click the **"Open Anyway"** button next to it and enter your Mac password.
+     6. Click **Open** on the final confirmation prompt.
+4. **Instant Sync**: Run the Mac app from your menu bar, start the service on Android, and enjoy!
+
+---
+
 ## What it does
 
 | Feature | Detail |
