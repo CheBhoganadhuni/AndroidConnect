@@ -10,8 +10,9 @@ AndroidApp/local.properties
 MacApp/.build/
 MacApp/build/
 
-# Built app bundle (binary — not source)
+# Built app bundle and release zips (binaries — not source)
 AndroidConnect.app/
+AndroidConnect-v*.zip
 
 # Xcode / IDE
 *.xcodeproj/
