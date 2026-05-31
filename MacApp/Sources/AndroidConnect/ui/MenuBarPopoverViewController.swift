@@ -431,12 +431,15 @@ final class MenuBarPopoverViewController: NSViewController {
         title.font      = .systemFont(ofSize: 13, weight: .semibold)
         title.textColor = OPTheme.title
 
-        let openBtn = NSButton(title: "", target: self, action: #selector(openBrowser))
-        openBtn.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: "Open")
-        openBtn.isBordered       = false
-        openBtn.contentTintColor = OPTheme.body
+        // Version button — replaces the redundant macwindow icon.
+        // "View ›" already opens the full browser; this button checks for updates.
+        let versionBtn = NSButton(title: AppVersion.display, target: self, action: #selector(checkForUpdates))
+        versionBtn.isBordered  = false
+        versionBtn.font        = .systemFont(ofSize: 11, weight: .medium)
+        versionBtn.contentTintColor = OPTheme.dim
+        versionBtn.toolTip     = "Check for updates"
 
-        for v: NSView in [quitCircle, reconnectCircle, title, openBtn] {
+        for v: NSView in [quitCircle, reconnectCircle, title, versionBtn] {
             v.translatesAutoresizingMaskIntoConstraints = false
             bar.addSubview(v)
         }
@@ -454,8 +457,8 @@ final class MenuBarPopoverViewController: NSViewController {
             title.leadingAnchor.constraint(equalTo: reconnectCircle.trailingAnchor, constant: 10),
             title.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
 
-            openBtn.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -12),
-            openBtn.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            versionBtn.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -12),
+            versionBtn.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
 
             line.leadingAnchor.constraint(equalTo: bar.leadingAnchor),
             line.trailingAnchor.constraint(equalTo: bar.trailingAnchor),
@@ -556,6 +559,14 @@ final class MenuBarPopoverViewController: NSViewController {
     // MARK: - Actions
 
     @objc private func openBrowser() { onOpenBrowser?() }
+
+    @objc private func checkForUpdates() {
+        popover?.performClose(nil)   // close popover so alerts appear cleanly
+        // Small delay so the popover is fully dismissed before the alert shows
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            UpdateChecker.shared.checkForUpdates()
+        }
+    }
 
     @objc private func reconnect() {
         onReconnect?()
