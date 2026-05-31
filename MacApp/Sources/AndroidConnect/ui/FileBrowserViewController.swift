@@ -1,6 +1,28 @@
 import AppKit
 import QuartzCore
 
+// MARK: - NSCollectionView subclass with native double-click support
+//
+// NSCollectionView has no doubleAction property (unlike NSTableView).
+// The previous approach used NSClickGestureRecognizer(numberOfClicksRequired:2), which
+// caused AppKit to delay SINGLE-click selection by the double-click timeout (~0.5–1 s)
+// while it waited to see if a second click would arrive — making selection feel sluggish
+// and causing double-click to read stale selection state.
+//
+// Solution: override mouseDown so super processes both clicks immediately (selection is
+// committed synchronously), then check clickCount == 2 after super returns.
+
+private final class FileBrowserCollectionView: NSCollectionView {
+    var onDoubleClick: ((NSPoint) -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)   // selection fully updated before we check
+        if event.clickCount == 2 {
+            onDoubleClick?(convert(event.locationInWindow, from: nil))
+        }
+    }
+}
+
 // MARK: - Thumbnail collection item
 
 private let thumbItemID = NSUserInterfaceItemIdentifier("ThumbItem")
@@ -178,7 +200,7 @@ final class FileBrowserViewController: NSViewController {
 
     // MARK: - Grid view (NSCollectionView)
 
-    private let collectionView  = NSCollectionView()
+    private let collectionView  = FileBrowserCollectionView()
     private let collectionScroll = NSScrollView()
 
     // MARK: - List view (NSTableView)
@@ -299,10 +321,9 @@ final class FileBrowserViewController: NSViewController {
         collectionView.isSelectable  = true
         collectionView.allowsMultipleSelection = true
         collectionView.backgroundColors = [.clear]
-        // Double-click via gesture (NSCollectionView has no doubleAction property)
-        let dblClick = NSClickGestureRecognizer(target: self, action: #selector(collectionDoubleClick))
-        dblClick.numberOfClicksRequired = 2
-        collectionView.addGestureRecognizer(dblClick)
+        // Double-click handled via mouseDown override in FileBrowserCollectionView —
+        // no gesture recognizer so single-click selection is instant (no timeout delay).
+        collectionView.onDoubleClick = { [weak self] loc in self?.collectionDoubleClick(at: loc) }
 
         collectionScroll.documentView     = collectionView
         collectionScroll.hasVerticalScroller = true
@@ -515,24 +536,25 @@ final class FileBrowserViewController: NSViewController {
         selectedPaths().forEach { client.downloadFile(path: $0) }
     }
 
-    @objc private func collectionDoubleClick(_ gesture: NSClickGestureRecognizer) {
-        let loc = gesture.location(in: collectionView)
+    private func collectionDoubleClick(at loc: NSPoint) {
         guard let ip = collectionView.indexPathForItem(at: loc), ip.item < items.count else { return }
         let item = items[ip.item]
         if item.isDir {
             pushDirectory(item.path)
         } else {
-            // The first click of the double-click clears multi-selection before this fires.
-            // savedCollectionSelection holds what was selected just before that happened.
-            // If the clicked item was part of that saved multi-selection, download all of them.
-            let useSelection = savedCollectionSelection.contains(ip) && savedCollectionSelection.count > 1
-                ? savedCollectionSelection
-                : collectionView.selectionIndexPaths
-            let paths = useSelection.sorted()
-                .compactMap { items[safe: $0.item] }
-                .filter { !$0.isDir }
-                .map { $0.path }
-            (paths.isEmpty ? [item.path] : paths).forEach { client.downloadFile(path: $0) }
+            // super.mouseDown ran first — selection is up to date.
+            // If multiple items are selected and this item is among them, download all;
+            // otherwise just download the double-clicked item.
+            let selection = collectionView.selectionIndexPaths
+            if selection.count > 1 && selection.contains(ip) {
+                selection.sorted()
+                    .compactMap { items[safe: $0.item] }
+                    .filter { !$0.isDir }
+                    .map { $0.path }
+                    .forEach { client.downloadFile(path: $0) }
+            } else {
+                client.downloadFile(path: item.path)
+            }
         }
     }
 
@@ -705,10 +727,8 @@ extension FileBrowserViewController: NSCollectionViewDataSource {
 // MARK: - NSCollectionViewDelegate
 
 extension FileBrowserViewController: NSCollectionViewDelegate {
-    /// Called BEFORE the selection changes — save it so double-click can use the pre-click selection.
     func collectionView(_ cv: NSCollectionView, shouldSelectItemsAt indexPaths: Set<IndexPath>) -> Set<IndexPath> {
-        savedCollectionSelection = cv.selectionIndexPaths
-        return indexPaths
+        indexPaths  // selection is handled synchronously in mouseDown; no pre-save needed
     }
     func collectionView(_ cv: NSCollectionView, didSelectItemsAt paths: Set<IndexPath>) { }
 
