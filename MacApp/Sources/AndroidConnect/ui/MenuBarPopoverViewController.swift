@@ -231,7 +231,7 @@ final class MenuBarPopoverViewController: NSViewController {
     // MARK: - Lifecycle
 
     override func loadView() {
-        let v = DraggablePopoverView(frame: NSRect(x: 0, y: 0, width: 310, height: 270))
+        let v = DraggablePopoverView(frame: NSRect(x: 0, y: 0, width: 340, height: 270))
         v.layer?.backgroundColor = OPTheme.popoverBg.cgColor
         v.onDragEnter = { [weak self] in self?.dropZone.isHidden = false }
         v.onDragExit  = { [weak self] in self?.dropZone.isHidden = true }
@@ -459,6 +459,7 @@ final class MenuBarPopoverViewController: NSViewController {
 
             title.leadingAnchor.constraint(equalTo: reconnectCircle.trailingAnchor, constant: 10),
             title.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: versionBtn.leadingAnchor, constant: -8),
 
             versionBtn.trailingAnchor.constraint(equalTo: bar.trailingAnchor, constant: -12),
             versionBtn.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
