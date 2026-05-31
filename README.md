@@ -293,9 +293,11 @@ The APK alone is enough to connect to *any* running Mac app on the same network 
 1. Go to **[github.com/CheBhoganadhuni/AndroidConnect/releases/latest](https://github.com/CheBhoganadhuni/AndroidConnect/releases/latest)**
 2. Download `AndroidConnect-vX.X.X.zip`
 3. Unzip → drag `AndroidConnect.app` to your `/Applications` folder
-4. Double-click to open — macOS may warn "unidentified developer" since it's not notarised
-   - Right-click → Open → Open (first launch only)
-   - Or: System Settings → Privacy & Security → "Open Anyway"
+4. **First launch — bypass Gatekeeper** (app is not notarised, so macOS blocks a plain double-click):
+   - **Right-click** `AndroidConnect.app` → **Open** → click **Open** in the dialog that appears
+   - That's it — macOS remembers the choice and double-click works normally from then on
+   - Alternative: System Settings → Privacy & Security → scroll down → **"Open Anyway"**
+   - Alternative (terminal): `xattr -cr /Applications/AndroidConnect.app` then double-click normally
 5. The antenna icon appears in your menu bar — app is running
 
 The app starts automatically on login once it has been run at least once (macOS remembers open-at-login apps that remain open).
