@@ -335,14 +335,14 @@ class ClipboardSyncService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         
-        // Filter events so we only poll on window change (app switching) or text selection.
-        // This avoids keyboard stuttering/stealing focus when the user is actively typing.
+        // Filter events to check on window context switches, clicks (potential context actions), and text selection
         val eventType = event.eventType
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || 
-            eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) {
+            eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED ||
+            eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
             
             val now = System.currentTimeMillis()
-            if (now - lastEventTime > 3000) { // 3-second rate limit
+            if (now - lastEventTime > 1200) { // Reduced rate limit to 1.2 seconds for highly responsive sync
                 lastEventTime = now
                 Log.d(TAG, "onAccessibilityEvent ($eventType) matches filter, checking clipboard")
                 readAndPush()
@@ -522,7 +522,7 @@ If you are a developer or an AI agent looking to replicate this system in a new 
 - [ ] Clear layout parameters focus flags (do NOT use `FLAG_NOT_FOCUSABLE`).
 - [ ] Override `onWindowFocusChanged` on an anonymous `View` subclass to safely trigger `getPrimaryClip()` and instantly call `wm.removeView()`.
 - [ ] Ensure that a post-delayed handler is registered to force-destroy the overlay window within 200ms to avoid blocking user interactions.
-- [ ] Filter accessibility events with a rate-limit of 3 seconds for `TYPE_WINDOW_STATE_CHANGED` and `TYPE_VIEW_TEXT_SELECTION_CHANGED` to ensure battery efficiency and prevent logs flooding.
+- [ ] Filter accessibility events with a rate-limit of 1.2 seconds for `TYPE_WINDOW_STATE_CHANGED`, `TYPE_VIEW_TEXT_SELECTION_CHANGED`, and `TYPE_VIEW_CLICKED` to ensure battery efficiency and prevent logs flooding.
 
 ### macOS Side Checklist:
 - [ ] Add **Accessibility** and **Input Monitoring** capabilities if using global keyboard shortcuts.
