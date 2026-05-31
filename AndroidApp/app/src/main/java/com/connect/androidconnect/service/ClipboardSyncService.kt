@@ -29,7 +29,7 @@ class ClipboardSyncService : AccessibilityService() {
     private val TAG = "ClipboardSyncService"
     private var clipboardManager: ClipboardManager? = null
     private var lastSentClip = ""
-    private val pollHandler = Handler(android.os.Looper.getMainLooper())
+    private val pollHandler = Handler(Looper.getMainLooper())
     private var lastEventTime = 0L
     private var overlayView: View? = null
 
@@ -172,13 +172,14 @@ class ClipboardSyncService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         
-        // Filter events to avoid unnecessary polling and focus stealing while user types
+        // Filter events to check on window context switches, clicks (potential context actions), and text selection
         val eventType = event.eventType
         if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED || 
-            eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED) {
+            eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED ||
+            eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) {
             
             val now = System.currentTimeMillis()
-            if (now - lastEventTime > 3000) { // 3-second rate limit
+            if (now - lastEventTime > 1200) { // Reduced rate limit to 1.2 seconds for highly responsive sync
                 lastEventTime = now
                 Log.d(TAG, "onAccessibilityEvent ($eventType) matches filter, checking clipboard")
                 readAndPush()
