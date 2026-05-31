@@ -15,6 +15,7 @@ swift build -c release 2>&1
 
 echo ""
 echo "Copying binary into app bundle…"
+mkdir -p "$APP_BUNDLE/Contents/MacOS"
 cp ".build/release/AndroidConnect" "$BINARY"
 chmod +x "$BINARY"
 
