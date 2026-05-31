@@ -68,6 +68,12 @@ final class MenuBarController: NSObject {
     // Global drag monitors — detect file drags anywhere near the menu bar
     private var globalDragMonitor:    Any?
     private var globalMouseUpMonitor: Any?
+    private var globalMouseDownMonitor: Any?
+
+    // Drag pasteboard change-count at the last mouseDown.
+    // We only open the drop zone if the count is higher than this — meaning files were
+    // actively written to the pasteboard during THIS gesture, not left over from a previous drag.
+    private var dragPasteboardBaseCount = -1
 
     // MARK: - Notification helper
 
@@ -210,15 +216,24 @@ final class MenuBarController: NSObject {
     // MARK: - Global drag monitor (shows drop zone when dragging files near menu bar)
 
     private func setupGlobalDragMonitor() {
+        // Snapshot the drag pasteboard state at every click so we can tell if
+        // new URLs were written during THIS gesture (real file drag) vs left over
+        // from a previous drag (e.g. 3-finger window move triggering stale pasteboard).
+        globalMouseDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown]) { [weak self] _ in
+            self?.dragPasteboardBaseCount = NSPasteboard(name: .drag).changeCount
+        }
+
         globalDragMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDragged]) { [weak self] _ in
             guard let self else { return }
             // Only trigger when dragging near the top of the screen (menu bar band ~80px)
             let mouseY  = NSEvent.mouseLocation.y
             let screenH = NSScreen.main?.frame.height ?? 800
             guard mouseY > screenH - 80 else { return }
-            // Confirm there are actually file URLs in the drag pasteboard
+            // Confirm there are actually file URLs in the drag pasteboard AND that they
+            // were written during this gesture (changeCount advanced past our mouseDown snapshot).
             let pb = NSPasteboard(name: .drag)
-            guard pb.types?.contains(.fileURL) == true else { return }
+            guard pb.types?.contains(.fileURL) == true,
+                  pb.changeCount != dragPasteboardBaseCount else { return }
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.popoverVC.setDropActive(true)
