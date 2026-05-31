@@ -48,8 +48,14 @@ class ConnectService : Service() {
             batteryMonitor.stop()
             batteryMonitor.start()
         }
+        server.onMacName = { name ->
+            connectedMacName = name
+            updateNotification("Connected · $name")
+            sendBroadcast(Intent(ACTION_MAC_NAME).putExtra("name", name))
+        }
         server.onDisconnect = {
             connectedMacIp = null
+            connectedMacName = null
             updateNotification("Waiting for Mac…")
             sendBroadcast(Intent(ACTION_DISCONNECTED))
             NotificationService.onNotification = null
@@ -114,11 +120,13 @@ class ConnectService : Service() {
     companion object {
         const val ACTION_CONNECTED    = "com.connect.androidconnect.CONNECTED"
         const val ACTION_DISCONNECTED = "com.connect.androidconnect.DISCONNECTED"
+        const val ACTION_MAC_NAME     = "com.connect.androidconnect.MAC_NAME"
         private const val CHANNEL_ID  = "connect_service"
         private const val NOTIF_ID    = 1
 
         /** Non-null while Mac is connected; MainActivity reads this on resume to sync UI. */
         @Volatile var connectedMacIp: String? = null
+        @Volatile var connectedMacName: String? = null
 
         /** Live service reference (used by NotificationService to push events). */
         @Volatile var instance: ConnectService? = null

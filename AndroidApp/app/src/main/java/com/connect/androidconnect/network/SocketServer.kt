@@ -23,6 +23,7 @@ class SocketServer(private val fm: FileManager, private val context: Context) {
 
     var onConnect: ((String) -> Unit)? = null
     var onDisconnect: (() -> Unit)? = null
+    var onMacName: ((String) -> Unit)? = null
 
     fun start() {
         running.set(true)
@@ -77,6 +78,12 @@ class SocketServer(private val fm: FileManager, private val context: Context) {
 
     private fun dispatch(msg: JSONObject, dis: DataInputStream, dos: DataOutputStream) {
         when (msg.optString("cmd")) {
+
+            "HELLO" -> {
+                val macName = msg.optString("macName", "Mac")
+                onMacName?.invoke(macName)
+                Protocol.writeMessage(dos, JSONObject().put("type", "HELLO_ACK"))
+            }
 
             "PING" -> Protocol.writeMessage(dos, JSONObject().put("type", "PONG"))
 

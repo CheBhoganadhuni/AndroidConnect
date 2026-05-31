@@ -222,6 +222,9 @@ final class MenuBarPopoverViewController: NSViewController {
     private let xferProgressBar = NSProgressIndicator()
     private var xferStack: NSStackView!
 
+    // Stored so checkForUpdates can animate it
+    private let versionBtn = NSButton(title: AppVersion.display, target: nil, action: nil)
+
     // Drop zone overlay (shown when user drags files over the menu bar icon)
     private let dropZone = PopoverDropZoneView()
 
@@ -433,7 +436,7 @@ final class MenuBarPopoverViewController: NSViewController {
 
         // Version button — replaces the redundant macwindow icon.
         // "View ›" already opens the full browser; this button checks for updates.
-        let versionBtn = NSButton(title: AppVersion.display, target: self, action: #selector(checkForUpdates))
+        versionBtn.target = self; versionBtn.action = #selector(checkForUpdates)
         versionBtn.isBordered  = false
         versionBtn.font        = .systemFont(ofSize: 11, weight: .medium)
         versionBtn.contentTintColor = OPTheme.dim
@@ -561,10 +564,16 @@ final class MenuBarPopoverViewController: NSViewController {
     @objc private func openBrowser() { onOpenBrowser?() }
 
     @objc private func checkForUpdates() {
-        popover?.performClose(nil)   // close popover so alerts appear cleanly
-        // Small delay so the popover is fully dismissed before the alert shows
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            UpdateChecker.shared.checkForUpdates()
+        // Immediate feedback — user sees "Checking…" in the button right away.
+        // Popover stays open during the network fetch so there's no confusing gap.
+        versionBtn.title     = "Checking…"
+        versionBtn.isEnabled = false
+
+        UpdateChecker.shared.checkForUpdates {
+            // Restore button, then close popover just before the result alert appears.
+            self.versionBtn.title     = AppVersion.display
+            self.versionBtn.isEnabled = true
+            self.popover?.performClose(nil)
         }
     }
 

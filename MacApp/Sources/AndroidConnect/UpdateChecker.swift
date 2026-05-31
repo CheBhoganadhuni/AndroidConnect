@@ -25,10 +25,17 @@ final class UpdateChecker {
     // MARK: - Entry point
 
     /// Call from the main thread (e.g. version button click).
-    /// Shows a brief "Checking…" sheet on the key window, then presents results.
-    func checkForUpdates() {
+    /// `onBeforeResult` is called on the main thread just before the result alert appears —
+    /// use it to close the popover / restore button state so the alert appears cleanly.
+    func checkForUpdates(onBeforeResult: (() -> Void)? = nil) {
         fetchLatest { [weak self] result in
-            DispatchQueue.main.async { self?.handleResult(result) }
+            DispatchQueue.main.async {
+                onBeforeResult?()
+                // Small pause so popover dismiss animation finishes before alert appears
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    self?.handleResult(result)
+                }
+            }
         }
     }
 

@@ -69,6 +69,9 @@ final class SocketClient {
                 return
             }
             self.fdLock.lock(); self.fd = sock; self.fdLock.unlock()
+            // Send our computer name so the Android app can show it in its UI
+            let macName = Host.current().localizedName ?? ProcessInfo.processInfo.hostName
+            try? MessageProtocol.writeMessage(fd: sock, ["cmd": "HELLO", "macName": macName])
             self.mainCallback { $0.clientConnected(to: device) }
         }
     }

@@ -54,6 +54,10 @@ class MainActivity : AppCompatActivity() {
             when (intent.action) {
                 ConnectService.ACTION_CONNECTED    -> setConnected(true,  intent.getStringExtra("ip"))
                 ConnectService.ACTION_DISCONNECTED -> setConnected(false, null)
+                ConnectService.ACTION_MAC_NAME     -> {
+                    val name = intent.getStringExtra("name") ?: return
+                    deviceIpText.text = "Connected to $name"
+                }
             }
         }
     }
@@ -86,6 +90,7 @@ class MainActivity : AppCompatActivity() {
         val filter = IntentFilter().apply {
             addAction(ConnectService.ACTION_CONNECTED)
             addAction(ConnectService.ACTION_DISCONNECTED)
+            addAction(ConnectService.ACTION_MAC_NAME)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(receiver, filter, RECEIVER_NOT_EXPORTED)
@@ -108,6 +113,7 @@ class MainActivity : AppCompatActivity() {
         val ip = ConnectService.connectedMacIp
         if (ip != null) {
             setConnected(true, ip)
+            ConnectService.connectedMacName?.let { deviceIpText.text = "Connected to $it" }
         } else if (serviceRunning) {
             // Poll every 500ms until Mac connects — supplements the broadcast receiver
             statusHandler.removeCallbacks(statusPoll)
