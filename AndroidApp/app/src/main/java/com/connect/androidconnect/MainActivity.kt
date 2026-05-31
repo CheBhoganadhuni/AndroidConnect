@@ -70,6 +70,8 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestPermission()
     ) { refreshPermissionCards() }
 
+    private var updateChecked = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -108,6 +110,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshPermissionCards()
+        if (!updateChecked) { updateChecked = true; UpdateChecker.checkOnce(this) }
 
         // Sync immediately if already connected
         val ip = ConnectService.connectedMacIp
