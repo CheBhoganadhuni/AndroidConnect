@@ -24,6 +24,9 @@ RESOURCES="$APP_BUNDLE/Contents/Resources"
 mkdir -p "$RESOURCES"
 cp "$MAC_SRC/Resources/AppIcon.icns" "$RESOURCES/AppIcon.icns"
 
+echo "Copying Info.plist…"
+cp "$MAC_SRC/Resources/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+
 echo "Ad-hoc signing…"
 codesign --force --deep --sign - "$APP_BUNDLE"
 
