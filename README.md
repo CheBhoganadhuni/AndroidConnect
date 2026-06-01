@@ -33,14 +33,21 @@ Get up and running with **Android Connect** in just a few steps. Follow these gu
 
 1. **Download the Mac Bundle**: Download the latest zip release. (At this moment its `AndroidConnect-v1.7.7.zip`.)and unzip it to extract `AndroidConnect.app`.
 2. **Bypass "Unidentified Developer" Security Block**:
-   * Since this app is an open-source tool and is ad-hoc signed rather than signed via a paid Apple Developer subscription, macOS Gatekeeper will block double-clicking it on first launch, saying **"AndroidConnect cannot be opened because the developer cannot be verified"**.
-   * **To Bypass it**:
-     1. Try to open the app once (double-click it), then click **Cancel** or **OK** on the warning popup.
-     2. Open macOS **System Settings** -> **Privacy & Security**.
+   * Since this app is ad-hoc signed and not submitted to Apple for notarization, macOS Gatekeeper will block it on first launch with **"AndroidConnect cannot be opened because the developer cannot be verified"**.
+   * **Normal flow (works on all macOS including Tahoe)**:
+     1. Double-click the app — click **Done** on the warning popup.
+     2. Open **System Settings** → **Privacy & Security**.
      3. Scroll down to the **Security** section.
-     4. You will see a notification saying: *"AndroidConnect was blocked from use because it is not from an identified developer."*
-     5. Click the **"Open Anyway"** button next to it and enter your Mac password.
-     6. Click **Open** on the final confirmation prompt.
+     4. You'll see *"AndroidConnect was blocked from use because it is not from an identified developer."*
+     5. Click **"Open Anyway"** → complete the **Touch ID or password** prompt.
+     6. Click **Open** on the final confirmation — done, never asked again.
+   * ⚠️ **If you accidentally cancel the Touch ID / password prompt**: the "Open Anyway" button disappears and won't come back. Just delete the app, re-extract it from the zip, move it to Applications again, and repeat from step 1.
+   * **Nuclear option — bypasses Gatekeeper entirely** (use if the above doesn't work or you just want a one-liner):
+     ```bash
+     xattr -cr /Applications/AndroidConnect.app
+     ```
+     Then double-click normally — no dialogs, no Touch ID, opens instantly.
+     *(If the app is still in Downloads, run `xattr -cr ~/Downloads/AndroidConnect.app` first, then move it to Applications.)*
 4. **Instant Sync**: Run the Mac app from your menu bar, start the service on Android, and enjoy!
 
 ---
