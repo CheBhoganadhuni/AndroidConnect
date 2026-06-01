@@ -10,7 +10,7 @@ Get up and running with **Android Connect** in just a few steps. Follow these gu
 
 ### 📱 1. Android App Setup (APK)
 
-1. **Download the Companion APK**: Pick the latest release. (At this moment its `AndroidConnect-v1.7.7.apk`.)
+1. **Download the Companion APK**: Pick the latest release. (At this moment its `AndroidConnect-v1.7.9.apk`.)
 2. **Bypass Google Play Protect Block**:
    * If Google Play Protect displays an "App blocked" or "Unrecognized app" dialog:
      * Tap **"Install Anyway"** if available.
@@ -31,7 +31,7 @@ Get up and running with **Android Connect** in just a few steps. Follow these gu
 
 ### 💻 2. macOS App Setup (.app)
 
-1. **Download the Mac Bundle**: Download the latest zip release. (At this moment its `AndroidConnect-v1.7.7.zip`) and unzip it to extract `AndroidConnect.app`.
+1. **Download the Mac Bundle**: Download the latest zip release. (At this moment its `AndroidConnect-v1.7.9.zip`) and unzip it to extract `AndroidConnect.app`.
 2. **Bypass "Unidentified Developer" Security Block**:
    * Since this app is ad-hoc signed and not submitted to Apple for notarization, macOS Gatekeeper will block it on first launch with **"AndroidConnect cannot be opened because the developer cannot be verified"**.
    * **Normal flow (works on all macOS including Tahoe)**:
