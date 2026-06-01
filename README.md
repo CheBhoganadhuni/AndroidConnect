@@ -31,7 +31,7 @@ Get up and running with **Android Connect** in just a few steps. Follow these gu
 
 ### 💻 2. macOS App Setup (.app)
 
-1. **Download the Mac Bundle**: Download the latest zip release. (At this moment its `AndroidConnect-v1.7.7.zip`.)and unzip it to extract `AndroidConnect.app`.
+1. **Download the Mac Bundle**: Download the latest zip release. (At this moment its `AndroidConnect-v1.7.7.zip`) and unzip it to extract `AndroidConnect.app`.
 2. **Bypass "Unidentified Developer" Security Block**:
    * Since this app is ad-hoc signed and not submitted to Apple for notarization, macOS Gatekeeper will block it on first launch with **"AndroidConnect cannot be opened because the developer cannot be verified"**.
    * **Normal flow (works on all macOS including Tahoe)**:
@@ -48,6 +48,13 @@ Get up and running with **Android Connect** in just a few steps. Follow these gu
      ```
      Then double-click normally — no dialogs, no Touch ID, opens instantly.
      *(If the app is still in Downloads, run `xattr -cr ~/Downloads/AndroidConnect.app` first, then move it to Applications.)*
+3. **Fix Notifications Syncing (Mandatory for Mac Notifications & File Alerts)**:
+   * **The Issue**: Because the application is ad-hoc signed and downloaded from GitHub, the macOS notification daemon (`usernotifd`) blocks it from registering with the system Notification Center. You will not receive any file alerts or mirrored phone notifications on your Mac until this is fixed.
+   * **The Fix**: Open your **Terminal** app and run the following command to re-sign the app locally on your machine. This establishes a local trust boundary and immediately enables notifications:
+     ```bash
+     codesign --force --deep --sign - /Applications/AndroidConnect.app
+     ```
+     *(If you haven't moved the app to `/Applications` yet, or if it is located elsewhere, adjust the path accordingly, e.g., `~/Downloads/AndroidConnect.app`.)*
 4. **Instant Sync**: Run the Mac app from your menu bar, start the service on Android, and enjoy!
 
 ---

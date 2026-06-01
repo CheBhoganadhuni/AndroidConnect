@@ -51,6 +51,8 @@ final class MenuBarController: NSObject {
     private var statusItem: NSStatusItem!
     private let popover    = NSPopover()
     private let popoverVC  = MenuBarPopoverViewController()
+    private var popoverGlobalMonitor: Any?
+    private var popoverLocalMonitor: Any?
 
     private let discovery  = DeviceDiscovery()
     private let client     = SocketClient()
@@ -148,6 +150,7 @@ final class MenuBarController: NSObject {
         popover.contentViewController = popoverVC
         popover.behavior = .transient
         popover.animates = true
+        popover.delegate = self
 
         popoverVC.onOpenBrowser  = { [weak self] in self?.openBrowser(); self?.popover.performClose(nil) }
         popoverVC.onDownloadFile = { [weak self] path in self?.client.downloadFile(path: path) }
@@ -160,12 +163,36 @@ final class MenuBarController: NSObject {
 
     @objc private func togglePopover(_ sender: NSStatusBarButton) {
         if popover.isShown {
-            popover.performClose(sender)
+            popover.close()
         } else {
             // show() first — it synchronously triggers viewDidLoad, so all views exist
             // before refreshPopover() calls update() on them.
             popover.show(relativeTo: sender.bounds, of: sender, preferredEdge: .minY)
+            
+            // Force popover window to become key to ensure responder chain and transience behavior work perfectly on Sequoia/Sonoma/Tahoe
+            popover.contentViewController?.view.window?.makeKey()
+            
             refreshPopover()
+
+            // Sonoma/Tahoe NSPopover click-outside transience bugfix
+            popoverGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+                DispatchQueue.main.async { self?.popover.close() }
+            }
+            
+            popoverLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+                guard let self = self else { return event }
+                if self.popover.isShown {
+                    if let popoverWindow = self.popover.contentViewController?.view.window,
+                       event.window != popoverWindow {
+                        // If it's a click in our status item button, let togglePopover handle it naturally on mouseUp (don't close here)
+                        if let button = self.statusItem.button, event.window == button.window {
+                            return event
+                        }
+                        self.popover.close()
+                    }
+                }
+                return event
+            }
         }
     }
 
@@ -481,5 +508,20 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
                                 willPresent notification: UNNotification,
                                 withCompletionHandler done: @escaping (UNNotificationPresentationOptions) -> Void) {
         done([.banner, .sound])
+    }
+}
+
+// MARK: - NSPopoverDelegate
+
+extension MenuBarController: NSPopoverDelegate {
+    func popoverWillClose(_ notification: Notification) {
+        if let monitor = popoverGlobalMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverGlobalMonitor = nil
+        }
+        if let monitor = popoverLocalMonitor {
+            NSEvent.removeMonitor(monitor)
+            popoverLocalMonitor = nil
+        }
     }
 }
